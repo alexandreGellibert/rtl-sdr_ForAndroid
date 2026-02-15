@@ -1302,7 +1302,9 @@ uint32_t rtlsdr_get_device_count(void)
 	uint32_t device_count = 0;
 	struct libusb_device_descriptor dd;
 	ssize_t cnt;
-
+#if defined(__ANDROID__)
+    return 0;
+#endif
 	r = libusb_init(&ctx);
 	if(r < 0)
 		return 0;
@@ -1441,8 +1443,11 @@ int rtlsdr_check_dongle_model(void *dev, char *manufact_check, char *product_che
 	return 0;
 }
 
-
+#ifdef __ANDROID__
+int rtlsdr_open(rtlsdr_dev_t **out_dev, int fd)
+#else
 int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
+#endif
 {
 	int r;
 	int i;
@@ -1461,6 +1466,10 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	memset(dev, 0, sizeof(rtlsdr_dev_t));
 	memcpy(dev->fir, fir_default, sizeof(fir_default));
 
+#ifdef __ANDROID__
+    libusb_set_option(dev->ctx, LIBUSB_OPTION_NO_DEVICE_DISCOVERY, NULL);
+#endif
+
 	r = libusb_init(&dev->ctx);
 	if(r < 0){
 		free(dev);
@@ -1469,7 +1478,13 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	dev->dev_lost = 1;
 
-	cnt = libusb_get_device_list(dev->ctx, &list);
+#ifdef __ANDROID__
+    /* 🔥 Android magic here */
+    r = libusb_wrap_sys_device(dev->ctx,
+                               (intptr_t)fd,
+                               &dev->devh);
+#else
+    cnt = libusb_get_device_list(dev->ctx, &list);
 
 	for (i = 0; i < cnt; i++) {
 		device = list[i];
@@ -1492,7 +1507,8 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	}
 
 	r = libusb_open(device, &dev->devh);
-	if (r < 0) {
+
+    if (r < 0) {
 		libusb_free_device_list(list, 1);
 		fprintf(stderr, "usb_open error %d\n", r);
 		if(r == LIBUSB_ERROR_ACCESS)
@@ -1502,6 +1518,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	}
 
 	libusb_free_device_list(list, 1);
+#endif
 
 	if (libusb_kernel_driver_active(dev->devh, 0) == 1) {
 		dev->driver_active = 1;

@@ -66,17 +66,24 @@ endif()
 ########################################################################
 # Find build dependencies
 ########################################################################
-find_package(Threads)
-find_package(PkgConfig)
-
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(LIBUSB libusb-1.0 IMPORTED_TARGET)
-    if(LIBUSB_LINK_LIBRARIES)
-        set(LIBUSB_LIBRARIES "${LIBUSB_LINK_LIBRARIES}")
-    endif()
+if(ANDROID)
+    # Name of the target created by libusb's CMakeLists.txt
+    set(LIBUSB_LIBRARIES libusb)
+    find_package(Threads REQUIRED)
 else()
-    set(LIBUSB_LIBRARIES "" CACHE STRING "manual libusb path")
-    set(LIBUSB_INCLUDE_DIRS "" CACHE STRING "manual libusb includepath")
+
+    find_package(Threads)
+    find_package(PkgConfig)
+
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(LIBUSB libusb-1.0 IMPORTED_TARGET)
+        if(LIBUSB_LINK_LIBRARIES)
+            set(LIBUSB_LIBRARIES "${LIBUSB_LINK_LIBRARIES}")
+        endif()
+    else()
+        set(LIBUSB_LIBRARIES "" CACHE STRING "manual libusb path")
+        set(LIBUSB_INCLUDE_DIRS "" CACHE STRING "manual libusb includepath")
+    endif()
 endif()
 
 if(MSVC)
@@ -149,6 +156,11 @@ install(FILES
 # Add subdirectories
 ########################################################################
 add_subdirectory(src)
+
+if(ANDROID)
+    message(STATUS "Android build: skipping desktop-only sections rtlsdr/")
+    return()
+endif ()
 
 ########################################################################
 # Create Pkg Config File

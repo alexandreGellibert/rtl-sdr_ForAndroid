@@ -20,18 +20,31 @@
 ########################################################################
 add_library(rtlsdr SHARED librtlsdr.c
   tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_r82xx.c)
-target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
-target_include_directories(rtlsdr PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>  # <prefix>/include
-  ${LIBUSB_INCLUDE_DIRS}
-  ${THREADS_PTHREADS_INCLUDE_DIR}
-  )
+if (ANDROID)
+    target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} android log)
+    target_include_directories(rtlsdr PUBLIC
+            ../include
+    )
+else()
+    target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
+    target_include_directories(rtlsdr PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include>  # <prefix>/include
+            ${LIBUSB_INCLUDE_DIRS}
+            ${THREADS_PTHREADS_INCLUDE_DIR}
+    )
+endif()
+
 set_target_properties(rtlsdr PROPERTIES DEFINE_SYMBOL "rtlsdr_EXPORTS")
 set_target_properties(rtlsdr PROPERTIES OUTPUT_NAME rtlsdr)
 set_target_properties(rtlsdr PROPERTIES SOVERSION 0)
 set_target_properties(rtlsdr PROPERTIES VERSION ${LIBVER})
 generate_export_header(rtlsdr)
+
+if(ANDROID)
+    message(STATUS "Android build: skipping desktop-only sections rtlsdr/src")
+    return()
+endif()
 
 ########################################################################
 # Setup static library variant
