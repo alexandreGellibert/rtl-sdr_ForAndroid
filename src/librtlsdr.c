@@ -1467,10 +1467,16 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	memcpy(dev->fir, fir_default, sizeof(fir_default));
 
 #ifdef __ANDROID__
-    libusb_set_option(dev->ctx, LIBUSB_OPTION_NO_DEVICE_DISCOVERY, NULL);
-#endif
-
+    struct libusb_init_option options[] = {
+            {
+                    .option = LIBUSB_OPTION_NO_DEVICE_DISCOVERY,
+                    .value = { .ival = 1 } // 1 enables the "No Discovery" mode
+            }
+    };
+    r = libusb_init_context(&dev->ctx, options, 1);
+#else
 	r = libusb_init(&dev->ctx);
+#endif
 	if(r < 0){
 		free(dev);
 		return -1;
